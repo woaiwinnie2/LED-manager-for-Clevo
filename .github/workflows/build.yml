@@ -1,0 +1,53 @@
+name: Build LED Manager
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Add MSBuild to PATH
+        uses: microsoft/setup-msbuild@v2
+
+      # LED Manager references this exact Debug-path DLL:
+      # dll\LEDLib\bin\Debug\LEDLib.dll
+      - name: Build LEDLib
+        run: >
+          msbuild
+          "LED Manager\LED Manager\dll\LedLib.sln"
+          /t:Rebuild
+          /p:Configuration=Debug
+          /p:Platform="Any CPU"
+          /m
+
+      - name: Build LED Manager
+        run: >
+          msbuild
+          "LED Manager\LED Manager.sln"
+          /t:Rebuild
+          /p:Configuration=Debug
+          /p:Platform="Any CPU"
+          /m
+
+      - name: Show build output
+        shell: pwsh
+        run: |
+          Get-ChildItem "LED Manager\LED Manager\bin\Debug" -Recurse |
+            Select-Object FullName, Length
+
+      - name: Upload portable build
+        uses: actions/upload-artifact@v4
+        with:
+          name: Clevo-LED-Manager
+          path: |
+            LED Manager/LED Manager/bin/Debug/**
+          if-no-files-found: error
+          retention-days: 30
